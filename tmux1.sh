@@ -7,7 +7,7 @@ tmux new-window -tdo_console01:3 -n sh
 
 tmux send-keys -tdo_console01:0 'htop' C-m
 tmux send-keys -tdo_console01:1 'cd ../shared' Enter 'jupyter notebook' C-m
-tmux send-keys -tdo-console01:2 'nvidia-smi -l 2' C-m
+tmux send-keys -tdo-console01:2 'nvidia-smi -l 2' Enter C-m
 tmux send-keys -tdo_console01:3 'df -h' C-m
 
 tmux select-window -tdo_console01:0
