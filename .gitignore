@@ -1,5 +1,10 @@
 cifar-10-batches-py/
 cifar-10-python.tar.gz
+coco_captioning/
+imagenet_val_25.npz
+squeezenet.ckpt.data-00000-of-00001
+squeezenet.ckpt.index
+squeezenet.ckpt.meta
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
