@@ -140,7 +140,46 @@ class CaptioningRNN(object):
         # Note also that you are allowed to make use of functions from layers.py   #
         # in your implementation, if needed.                                       #
         ############################################################################
-        pass
+        
+        N, D = features.shape
+        T = captions.shape[1]
+        V = len(self.word_to_idx)
+#         print("N, D, T, V = ", N, D, T, V)
+        
+#         print("features.shape = ", features.shape)
+#         print("W_proj.shape, b_proj.shape = ", W_proj.shape, b_proj.shape)
+        
+        h0, h0_cache = affine_forward(features, W_proj, b_proj)
+#         print("h0.shape = ", h0.shape)
+        
+        captions_in, captions_in_cache = word_embedding_forward(captions_in, W_embed)
+        
+        if (self.cell_type == 'rnn'):        
+            h, rnn_cache = rnn_forward(captions_in, h0, Wx, Wh, b)
+        
+        yhat, yhat_cache = temporal_affine_forward(h, W_vocab, b_vocab)        
+        loss, dyhat = temporal_softmax_loss(yhat, captions_out, mask, verbose=False)
+        
+        dh, dW_vocab, db_vocab = temporal_affine_backward(dyhat, yhat_cache)
+        
+        if (self.cell_type == 'rnn'):        
+            dcaptions_in, dh0, dWx, dWh, db = rnn_backward(dh, rnn_cache)
+        
+        dW_embed = word_embedding_backward(dcaptions_in, captions_in_cache)
+        dfeatures, dW_proj, db_proj = affine_backward(dh0, h0_cache)
+        
+        grads["W_vocab"] = dW_vocab
+        grads["b_vocab"] = db_vocab
+
+        grads["Wx"] = dWx
+        grads["Wh"] = dWh
+        grads["b"] = db
+                
+        grads["W_embed"] = dW_embed
+
+        grads["W_proj"] = dW_proj
+        grads["b_proj"] = db_proj
+        
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -205,7 +244,38 @@ class CaptioningRNN(object):
         # NOTE: we are still working over minibatches in this function. Also if   #
         # you are using an LSTM, initialize the first cell state to zeros.        #
         ###########################################################################
-        pass
+        
+#         print("N = ", N)
+        
+        h0, _ = affine_forward(features, W_proj, b_proj)
+#         print("h0.shape = ", h0.shape)
+       
+        prev_h = h0
+        x = self._start * np.ones((N, 1), dtype=np.int32)
+
+            
+        for i in range(max_length):
+            if (self.cell_type == 'rnn'):        
+#                 h, rnn_cache = rnn_forward(captions_in, h0, Wx, Wh, b)
+#                 x, _ = word_embedding_forward(x, W_embed)
+#                 print("x.shape = ", x.shape)
+                x = W_embed[x]
+#                 print("x.shape = ", x.shape)
+#                 print("prev_h.shape = ", prev_h.shape)
+                next_h, cache = rnn_step_forward(x[:, 0, :], prev_h, Wx, Wh, b)
+#                 print("next_h.shape = ", next_h.shape)
+                prev_h = next_h
+
+                yhat_t, _ = affine_forward(next_h, W_vocab, b_vocab)
+#                 print("yhat_t.shape = ", yhat_t.shape)
+                yhat_t = np.argmax(yhat_t, axis=1)
+#                 print("yhat_t.shape = ", yhat_t.shape)
+                x = yhat_t.reshape(N, 1)
+                captions[:, i] = yhat_t
+                
+        
+        
+        
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
