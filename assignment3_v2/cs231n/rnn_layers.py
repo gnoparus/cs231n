@@ -304,7 +304,55 @@ def lstm_step_forward(x, prev_h, prev_c, Wx, Wh, b):
     # TODO: Implement the forward pass for a single timestep of an LSTM.        #
     # You may want to use the numerically stable sigmoid implementation above.  #
     #############################################################################
-    pass
+    
+    N, D = x.shape
+    H = prev_h.shape[1]
+    
+    x_prev_h = np.concatenate((x, prev_h), axis=1)
+    Wxh = np.concatenate((Wx, Wh), axis=0)
+    a = x_prev_h.dot(Wxh) + b
+     
+    i = sigmoid(a[:, H*0:H*1])
+    f = sigmoid(a[:, H*1:H*2])
+    o = sigmoid(a[:, H*2:H*3])
+    g = np.tanh(a[:, H*3:H*4]) 
+
+    next_c = (f * prev_c) + (g * i)
+    next_h = np.tanh(next_c) * o     
+                
+                
+#     Wxi = Wx[:, H*0:H*1]
+#     Whi = Wh[:, H*0:H*1]
+#     bi = b[H*0:H*1]
+#     Wxf = Wx[:, H*1:H*2]
+#     Whf = Wh[:, H*1:H*2]
+#     bf = b[H*1:H*2]
+#     Wxo = Wx[:, H*2:H*3]
+#     Who = Wh[:, H*2:H*3]
+#     bo = b[H*2:H*3]
+#     Wxg = Wx[:, H*3:H*4]
+#     Whg = Wh[:, H*3:H*4]
+#     bg = b[H*3:H*4]
+        
+#     x_prev_h = np.concatenate((x, prev_h), axis=1)
+    
+#     Wxhi = np.concatenate((Wxi, Whi), axis=0)
+#     i = sigmoid(bi + x_prev_h.dot(Wxhi))
+    
+#     Wxhf = np.concatenate((Wxf, Whf), axis=0)
+#     f = sigmoid(bf + x_prev_h.dot(Wxhf))
+    
+#     Wxho = np.concatenate((Wxo, Who), axis=0)
+#     q = sigmoid(bo + x_prev_h.dot(Wxho))
+
+#     Wxhg = np.concatenate((Wxg, Whg), axis=0)
+#     g = np.tanh(bg + x_prev_h.dot(Wxhg))
+        
+#     next_c = (f * prev_c) + (g * i)
+#     next_h = np.tanh(next_c) * q   
+        
+    cache = i, f, o, g, next_c, N, D, H, prev_h, prev_c, Wx, Wh, b
+    
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
@@ -336,13 +384,32 @@ def lstm_step_backward(dnext_h, dnext_c, cache):
     # HINT: For sigmoid and tanh you can compute local derivatives in terms of  #
     # the output value from the nonlinearity.                                   #
     #############################################################################
-    pass
+    
+    i, f, o, g, next_c, N, D, H, prev_h, prev_c, Wx, Wh, b = cache
+    
+    di = dnext_c * g    
+    df = dnext_c * prev_c
+    dq = dnext_h * np.tanh(next_c)    
+    dg = dnext_c * i
+    
+    dprev_c = dnext_c * f
+    
+#     dbi = di * dsigmoid(bi + x_prev_h.dot(Wxhi))
+    
+    
+    
+    
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
 
     return dx, dprev_h, dprev_c, dWx, dWh, db
 
+def dtanh(a):
+    return (1 - (np.tanh(a) ** 2))
+
+def dsigmoid(a):
+    return sidmoid(a) * (1 - sigmoid(a))
 
 def lstm_forward(x, h0, Wx, Wh, b):
     """
