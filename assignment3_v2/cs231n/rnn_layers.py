@@ -311,11 +311,17 @@ def lstm_step_forward(x, prev_h, prev_c, Wx, Wh, b):
     x_prev_h = np.concatenate((x, prev_h), axis=1)
     Wxh = np.concatenate((Wx, Wh), axis=0)
     a = x_prev_h.dot(Wxh) + b
-     
-    i = sigmoid(a[:, H*0:H*1])
-    f = sigmoid(a[:, H*1:H*2])
-    o = sigmoid(a[:, H*2:H*3])
-    g = np.tanh(a[:, H*3:H*4]) 
+#     print('a.shape = ', a.shape)
+    
+    ai = a[:, H*0:H*1]
+    af = a[:, H*1:H*2]
+    ao = a[:, H*2:H*3]
+    ag = a[:, H*3:H*4]
+    
+    i = sigmoid(ai)
+    f = sigmoid(af)
+    o = sigmoid(ao)
+    g = np.tanh(ag) 
 
     next_c = (f * prev_c) + (g * i)
     next_h = np.tanh(next_c) * o     
@@ -351,7 +357,7 @@ def lstm_step_forward(x, prev_h, prev_c, Wx, Wh, b):
 #     next_c = (f * prev_c) + (g * i)
 #     next_h = np.tanh(next_c) * q   
         
-    cache = i, f, o, g, next_c, N, D, H, prev_h, prev_c, Wx, Wh, b
+    cache = i, f, o, g, ai, af, ao, ag, next_c, N, D, H, prev_h, prev_c, Wx, Wh, b, x
     
     ##############################################################################
     #                               END OF YOUR CODE                             #
@@ -385,15 +391,39 @@ def lstm_step_backward(dnext_h, dnext_c, cache):
     # the output value from the nonlinearity.                                   #
     #############################################################################
     
-    i, f, o, g, next_c, N, D, H, prev_h, prev_c, Wx, Wh, b = cache
+    i, f, o, g, ai, af, ao, ag, next_c, N, D, H, prev_h, prev_c, Wx, Wh, b, x = cache
     
-    di = dnext_c * g    
-    df = dnext_c * prev_c
-    dq = dnext_h * np.tanh(next_c)    
-    dg = dnext_c * i
+    dnext_c2 = dnext_c + dnext_h * o * dtanh(next_c)
     
-    dprev_c = dnext_c * f
+    di = dnext_c2 * g    
+    df = dnext_c2 * prev_c
+    do = dnext_h * np.tanh(next_c)    
+    dg = dnext_c2 * i
     
+#     print('prev_c.shape  = ', prev_c.shape)
+#     print('dnext_c.shape  = ', dnext_c.shape)
+#     print('f.shape  = ', f.shape)
+#     print('dnext_c  = ', dnext_c)
+#     print('f  = ', f)
+    
+    dprev_c = dnext_c2 * f
+#     print('dprev_c.shape = ', dprev_c.shape)
+    
+    dai = di * dsigmoid(ai)
+    daf = df * dsigmoid(af)
+    dao = do * dsigmoid(ao)
+    dag = dg * dtanh(ag)
+    
+    da = np.concatenate((dai, daf, dao, dag), axis=1)
+#     print('da.shape = ', da.shape)
+    
+    db = np.sum(da, axis=0)
+    
+    dx = da.dot(Wx.T)
+    dprev_h = da.dot(Wh.T)
+    
+    dWx = x.T.dot(da)
+    dWh = prev_h.T.dot(da)
 #     dbi = di * dsigmoid(bi + x_prev_h.dot(Wxhi))
     
     
@@ -409,7 +439,7 @@ def dtanh(a):
     return (1 - (np.tanh(a) ** 2))
 
 def dsigmoid(a):
-    return sidmoid(a) * (1 - sigmoid(a))
+    return sigmoid(a) * (1 - sigmoid(a))
 
 def lstm_forward(x, h0, Wx, Wh, b):
     """
