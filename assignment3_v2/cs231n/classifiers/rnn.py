@@ -156,6 +156,8 @@ class CaptioningRNN(object):
         
         if (self.cell_type == 'rnn'):        
             h, rnn_cache = rnn_forward(captions_in, h0, Wx, Wh, b)
+        elif (self.cell_type == 'lstm'):       
+            h, lstm_cache = lstm_forward(captions_in, h0, Wx, Wh, b)
         
         yhat, yhat_cache = temporal_affine_forward(h, W_vocab, b_vocab)        
         loss, dyhat = temporal_softmax_loss(yhat, captions_out, mask, verbose=False)
@@ -164,6 +166,8 @@ class CaptioningRNN(object):
         
         if (self.cell_type == 'rnn'):        
             dcaptions_in, dh0, dWx, dWh, db = rnn_backward(dh, rnn_cache)
+        elif (self.cell_type == 'lstm'):       
+            dcaptions_in, dh0, dWx, dWh, db = lstm_backward(dh, lstm_cache)
         
         dW_embed = word_embedding_backward(dcaptions_in, captions_in_cache)
         dfeatures, dW_proj, db_proj = affine_backward(dh0, h0_cache)
@@ -251,29 +255,32 @@ class CaptioningRNN(object):
 #         print("h0.shape = ", h0.shape)
        
         prev_h = h0
+        prev_c = np.zeros_like(h0)
         x = self._start * np.ones((N, 1), dtype=np.int32)
-
             
         for i in range(max_length):
+            x = W_embed[x]
+#             x, _ = word_embedding_forward(x, W_embed)
+#             print("x.shape = ", x.shape)
+#             print("x.shape = ", x.shape)
+#             print("prev_h.shape = ", prev_h.shape)
+            
             if (self.cell_type == 'rnn'):        
-#                 h, rnn_cache = rnn_forward(captions_in, h0, Wx, Wh, b)
-#                 x, _ = word_embedding_forward(x, W_embed)
-#                 print("x.shape = ", x.shape)
-                x = W_embed[x]
-#                 print("x.shape = ", x.shape)
-#                 print("prev_h.shape = ", prev_h.shape)
                 next_h, cache = rnn_step_forward(x[:, 0, :], prev_h, Wx, Wh, b)
 #                 print("next_h.shape = ", next_h.shape)
-                prev_h = next_h
-
-                yhat_t, _ = affine_forward(next_h, W_vocab, b_vocab)
-#                 print("yhat_t.shape = ", yhat_t.shape)
-                yhat_t = np.argmax(yhat_t, axis=1)
-#                 print("yhat_t.shape = ", yhat_t.shape)
-                x = yhat_t.reshape(N, 1)
-                captions[:, i] = yhat_t
                 
+            elif (self.cell_type == 'lstm'):       
+                next_h, next_c, cache = lstm_step_forward(x[:, 0, :], prev_h, prev_c, Wx, Wh, b)
+                prev_c = next_c
         
+            prev_h = next_h
+
+            yhat_t, _ = affine_forward(next_h, W_vocab, b_vocab)
+#                 print("yhat_t.shape = ", yhat_t.shape)
+            yhat_t = np.argmax(yhat_t, axis=1)
+#                 print("yhat_t.shape = ", yhat_t.shape)
+            x = yhat_t.reshape(N, 1)
+            captions[:, i] = yhat_t
         
         
         ############################################################################
